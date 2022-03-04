@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
 
+
 const yoschema = new mongoose.Schema({
     name: {
         type: String,
@@ -25,9 +26,9 @@ const yoschema = new mongoose.Schema({
     },
     tokens:[
         { 
-           token:{
-            type:String,
-            required:true
+            token:{
+                type:String,
+                required:true
             }
         }
     ]
@@ -35,7 +36,6 @@ const yoschema = new mongoose.Schema({
 
 //encryting password
 yoschema.pre('save',async function(next){
-    console.log(' encryting password...');
     if(this.isModified('password'))
     {
         this.password = await bcrypt.hash(this.password,12);
@@ -44,13 +44,19 @@ yoschema.pre('save',async function(next){
     next();
 });
 
-//Jwt token
+//generate Jwt token
 yoschema.methods.generateAuthToken = async function(){
     try {
-        let mytoken = jwt.sign({_id:this._id},process.env.SECRETKEY);
+        const id = {
+            _id:this._id
+        }
+        let mytoken = jwt.sign(id,process.env.ACCESS_SECRETKEY,{
+            expiresIn: '1h' 
+        });
+        
         this.tokens = this.tokens.concat({token:mytoken});
         await this.save();
-        return token;
+        return this.tokens;
     } catch (error) {
         console.log(error);
     }

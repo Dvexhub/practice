@@ -1,48 +1,44 @@
-const jwt = require("jsonwebtoken");
+// const jwt = require("jsonwebtoken");
 const express = require("express");
 const router =  express.Router();
 const Mytest = require('../Modals/test'); // Database Schema and it is used for acquiring data
+const bcrypt = require("bcryptjs")
+const cookieParser = require('cookie-parser');
+router.use(cookieParser());
 require('dotenv').config();
 
-//test
-router.get('/',(req,res)=>{
+const auth = require('../middleware/auth');
+//test for cookies
+router.get('/secret',auth, (req,res)=>{
     res.send("Home Data");
 })
 
 //getting data
-router.get('/data',  async function(req,res){
+router.get('/data', async function(req,res){
     const data = await Mytest.find();
-    res.send(data,null,2);
+    res.send(data);
 });
 
 //register user
 router.post('/register',async function(req,res){ 
     try {
-        // let token;
+        
         const {name,email,phone,password,cpassword} = req.body;
-
         if(!name || !email || !phone || !password || !cpassword)
         {
             return res.status(422).json({message:"please fill all the details"});
         }
-
         if(password != cpassword)
         {
             return res.status(422).json({message:"password are not same"})
         }        
-
         const userExist = await Mytest.findOne({email:email});
-        
         if(userExist)
         {
             return res.status(422).json({message:"User already exists"});
         }
-        // else{
-            // token = await userExist.generateAuthToken();
-            // console.log(token);
-        // }
         const user = new Mytest({name,email,phone,password,cpassword});
-
+        //HAShING password over here in the modal test file-----------
         const userRegister = await user.save();
         if(userRegister)
         {
@@ -57,17 +53,34 @@ router.post('/register',async function(req,res){
 })
 
 // singin 
-router.post('/singIn',async function(req,res){
+router.post('/signin',async function(req,res){
     const {email,password} = req.body;
-
     if(!email || !password)
     {
         return res.status(422).json({message:"please fill all the details"});
     }
+    const userLogin = await Mytest.findOne({email:email});
+    if(userLogin)
+    {
+        let token = await userLogin.generateAuthToken();
+        const isMatch = await bcrypt.compare(password,userLogin.password)
+       
+        let options = {
+            maxAge: 1000 * 60 * 15, // would expire after 15 minutes
+        }
+        res.cookie('jwt',token,options);
 
-    const emailExist = await Mytest.findOne({email:email});
+        if(!isMatch)
+        {
+            res.status(400).json({error:'Invalid credentials'});
+        }else{
+            res.json({message:"User login successfully"});
+        }
+    }else{
+        res.status(400).json({error:"Invalid credentials"});
+    }
+
     
-    // TODO
 })
 
 // Delete data with id(Only delete on user with that particular id)  
