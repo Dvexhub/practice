@@ -1,15 +1,21 @@
 const jwt = require("jsonwebtoken");
-const Mytest = require('../Modals/test');
 
 const auth = async (req,res,next) => {
+    const authHeader=req.header('authorization');
+    const token = authHeader && authHeader.split(' ')[1];
+    if(token == null) return res.status(401).json({message:"You can't access this page"});
     try {
-        const token = req.cookies.jwt;
-        const verifyUser = await jwt.verify(token,process.env.ACCESS_SECRETKEY); 
-        // console.log(verifyUser);
+        await jwt.verify(token,process.env.ACCESS_SECRETKEY,(err,user) => {
+            if(err){
+                return res.status(403).json({error:"error in verifying token"});
+            }else{
+                req.user = user;
+                next();
+            }
+        }); 
     } catch (error) {   
         res.status(401).send(error);
     }
-    next();
 }
 
 module.exports = auth;

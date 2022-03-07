@@ -1,7 +1,7 @@
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const bcrypt = require("bcryptjs");
-
+const auth2 = require("../middleware/auth2");
 
 const yoschema = new mongoose.Schema({
     name: {
@@ -23,15 +23,7 @@ const yoschema = new mongoose.Schema({
     cpassword:{
         type:String,
         required: true
-    },
-    tokens:[
-        { 
-            token:{
-                type:String,
-                required:true
-            }
-        }
-    ]
+    }
 });
 
 //encryting password
@@ -50,13 +42,12 @@ yoschema.methods.generateAuthToken = async function(){
         const id = {
             _id:this._id
         }
-        let mytoken = jwt.sign(id,process.env.ACCESS_SECRETKEY,{
-            expiresIn: '1h' 
-        });
-        
-        this.tokens = this.tokens.concat({token:mytoken});
-        await this.save();
-        return this.tokens;
+        const accesstoken = await auth2(id);
+        const refreshToken = await jwt.sign(id,process.env.REFRESH_TOKEN_SECRETKEY);
+        return {
+            token:accesstoken,
+            refreshToken:refreshToken
+        };
     } catch (error) {
         console.log(error);
     }
